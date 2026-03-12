@@ -1,17 +1,34 @@
-import pytesseract
-from PIL import Image
 import re
 import json
 
 class VisionAgent:
     """
-    The Vision Agent extracts text from images (invoices/receipts)
-    and uses regex/AI logic to identify key GST fields.
+    The Vision Agent extracts text from images (invoices/receipts).
+    Using lazy imports to prevent startup crashes on clouds without Tesseract.
     """
     
     def __init__(self, tesseract_path=None):
-        if tesseract_path:
-            pytesseract.pytesseract.tesseract_cmd = tesseract_path
+        self.tesseract_installed = True
+        try:
+            import pytesseract
+            if tesseract_path:
+                pytesseract.pytesseract.tesseract_cmd = tesseract_path
+        except ImportError:
+            self.tesseract_installed = False
+
+    def extract_text(self, image_path):
+        """Extracts raw text from an image file."""
+        if not self.tesseract_installed:
+            return "Error: Tesseract OCR is not installed on this environment."
+        
+        try:
+            import pytesseract
+            from PIL import Image
+            image = Image.open(image_path)
+            text = pytesseract.image_to_string(image)
+            return text
+        except Exception as e:
+            return f"Error processing image: {e}"
 
     def extract_text(self, image_path):
         """Extracts raw text from an image file."""
