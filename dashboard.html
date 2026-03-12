@@ -91,6 +91,7 @@
                             <th class="pb-4 font-semibold">GSTIN</th>
                             <th class="pb-4 font-semibold text-right">Amount</th>
                             <th class="pb-4 font-semibold text-center">Status</th>
+                            <th class="pb-4 font-semibold text-center">Due In</th>
                             <th class="pb-4 font-semibold text-center">Tally Sync</th>
                             <th class="pb-4 font-semibold">Flags</th>
                         </tr>
@@ -124,11 +125,20 @@
                 
                 let totalAmt = 0;
                 let discrepancies = 0;
-
                 data.forEach(item => {
                     const statusColor = item.status === 'PASSED' ? 'bg-emerald-500/10 text-emerald-400' : 'bg-rose-500/10 text-rose-400';
                     totalAmt += item.total_amount_claimed;
                     if (item.status !== 'PASSED') discrepancies++;
+
+                    const invDate = new Date(item.invoice_date || item.processed_at);
+                    const dueDate = new Date(invDate.getTime() + (item.payment_terms || 30) * 24 * 60 * 60 * 1000);
+                    const today = new Date();
+                    const diffTime = dueDate - today;
+                    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+                    
+                    const dueLabel = diffDays < 0 ? 
+                        `<span class="text-rose-400 font-bold">${Math.abs(diffDays)}d Overdue</span>` : 
+                        `<span class="text-slate-400">${diffDays}d left</span>`;
 
                     const row = `
                         <tr class="border-b border-white/5 hover:bg-white/5 transition-all">
@@ -139,6 +149,9 @@
                                 <span class="px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider ${statusColor}">
                                     ${item.status}
                                 </span>
+                            </td>
+                            <td class="py-4 text-center text-xs">
+                                ${dueLabel}
                             </td>
                             <td class="py-4 text-center">
                                 <button onclick="syncToTally(${item.id})" class="text-indigo-400 hover:text-indigo-300 font-semibold text-xs border border-indigo-500/30 px-3 py-1.5 rounded-lg bg-indigo-500/5 transition-all">

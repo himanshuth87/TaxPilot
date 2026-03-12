@@ -44,6 +44,8 @@ class InvoiceRecord(Base):
     id = Column(Integer, primary_key=True, index=True)
     org_id = Column(String, index=True, default="default") # The Company ID
     invoice_no = Column(String, index=True)
+    invoice_date = Column(DateTime, default=datetime.datetime.utcnow)
+    payment_terms = Column(Integer, default=30) # Days allowed for payment
     supplier_gstin = Column(String)
     base_amount = Column(Float)
     tax_rate = Column(Float)

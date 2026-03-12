@@ -56,11 +56,18 @@ class VisionAgent:
         results = {
             "total_amount": 0.0,
             "base_amount": 0.0,
-            "gstin": "NOT_FOUND"
+            "gstin": "NOT_FOUND",
+            "invoice_date": None
         }
         
         if not text:
             return results
+
+        # 📅 Date Search (Matches DD/MM/YYYY, DD-MM-YYYY, etc.)
+        date_pattern = r'(\d{1,2}[/-]\d{1,2}[/-]\d{2,4})'
+        date_match = re.search(date_pattern, text)
+        if date_match:
+            results["invoice_date"] = date_match.group(0)
 
         # 🇮🇳 GSTIN Search
         gstin_pattern = r'[0-9]{2}[A-Z]{5}[0-9]{4}[A-Z]{1}[1-9A-Z]{1}Z[0-9A-Z]{1}'

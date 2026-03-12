@@ -129,10 +129,24 @@ async def upload_invoice(file: UploadFile = File(...), org: str = "default", db:
         
         result = reconciler.process_invoice(real_data)
         
-        # 4. Save to DB with Org Association
+        # 4. Save to DB with Org Association and AP Tracking
+        import datetime
+        final_date = datetime.datetime.utcnow()
+        if fields.get("invoice_date"):
+            try:
+                # Basic parser for common formats DD/MM/YYYY or DD-MM-YYYY
+                d_str = fields["invoice_date"].replace('/', '-')
+                parts = d_str.split('-')
+                if len(parts) == 3:
+                    if len(parts[2]) == 2: parts[2] = "20" + parts[2]
+                    final_date = datetime.datetime(int(parts[2]), int(parts[1]), int(parts[0]))
+            except:
+                pass
+
         record = InvoiceRecord(
             org_id=org,
             invoice_no=real_data['invoice_no'],
+            invoice_date=final_date,
             supplier_gstin=real_data['supplier_gstin'],
             base_amount=real_data['base_amount'],
             tax_rate=real_data['tax_rate'],
