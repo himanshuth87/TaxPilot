@@ -30,6 +30,23 @@ class VisionAgent:
         except Exception as e:
             return f"Error processing image: {e}"
 
+    def extract_text_from_pdf(self, pdf_path):
+        """Converts PDF pages to images and extracts text."""
+        try:
+            from pdf2image import convert_from_path
+            import pytesseract
+            
+            # Convert PDF to a list of PIL Image objects
+            pages = convert_from_path(pdf_path)
+            full_text = ""
+            for page in pages:
+                full_text += pytesseract.image_to_string(page) + "\n"
+            return full_text
+        except ImportError:
+            return "Error: pdf2image or poppler not installed. Use images for now."
+        except Exception as e:
+            return f"Error processing PDF: {e}"
+
     def extract_text(self, image_path):
         """Extracts raw text from an image file."""
         try:
