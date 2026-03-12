@@ -70,9 +70,9 @@ async def upload_invoice(file: UploadFile = File(...), db: Session = Depends(get
         tax_rate = 18.0 if "18" in content else 12.0
         
         # Real-time Audit Data:
-        # Base amount is derived back from the total to find gaps
         final_total = fields["total_amount"] if fields["total_amount"] > 0 else 1180.0
-        base_amt = round(final_total / (1 + tax_rate/100), 2)
+        # CRITICAL FIX: We now use the actual base extracted, or calculate standard if missing
+        base_amt = fields["base_amount"] if fields["base_amount"] > 0 else round(final_total / (1 + tax_rate/100), 2)
         
         real_data = {
             'invoice_no': f"SCAN-{os.path.basename(tmp_path)[:6]}",
