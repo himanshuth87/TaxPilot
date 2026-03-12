@@ -1,11 +1,19 @@
+import os
+import sys
+
+# Vercel Path Fix: Add the root directory to sys.path so it can find 'core', 'vision', etc.
+sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
+
 from fastapi import FastAPI, HTTPException, Request, Depends
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
+from sqlalchemy.orm import Session
+import uvicorn
+
+# These imports will now work on Vercel
 from core.reconciler import ReconciliationEngine
 from vision.ocr_engine import VisionAgent
 from database.models import init_db, get_db, InvoiceRecord
-from sqlalchemy.orm import Session
-import uvicorn
 
 app = FastAPI(title="TaxPilot API", version="0.1")
 

@@ -8,10 +8,24 @@ from dotenv import load_dotenv
 load_dotenv()
 
 # Database URL will come from Supabase (Free Tier)
-# For local testing, it defaults to a local SQLite file
-DATABASE_URL = os.getenv("DATABASE_URL", "sqlite:///./ledger_agent.db")
+DATABASE_URL = os.getenv("DATABASE_URL", "sqlite:///./taxpilot_local.db")
 
-engine = create_engine(DATABASE_URL)
+# Ensure the URL is in a format SQLAlchemy likes (postgress -> postgresql)
+if DATABASE_URL.startswith("postgres://"):
+    DATABASE_URL = DATABASE_URL.replace("postgres://", "postgresql://", 1)
+
+try:
+    engine = create_engine(DATABASE_URL)
+    # Test connection
+    with engine.connect() as conn:
+        pass
+except Exception as e:
+    # On Vercel, the root is read-only. We must use /tmp for SQLite fallback.
+    sqlite_path = "/tmp/taxpilot_local.db" if os.environ.get("VERCEL") else "./taxpilot_local.db"
+    print(f"Warning: Cloud DB connection failed ({e}). Falling back to SQLite at {sqlite_path}")
+    DATABASE_URL = f"sqlite:///{sqlite_path}"
+    engine = create_engine(DATABASE_URL)
+
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 Base = declarative_base()
 

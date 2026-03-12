@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TaxPilot | Founder Dashboard</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600&display=swap" rel="stylesheet">
+    <style>
+        body { font-family: 'Outfit', sans-serif; background-color: #0f172a; color: #f8fafc; }
+        .glass { background: rgba(30, 41, 59, 0.7); backdrop-filter: blur(12px); border: 1px solid rgba(255, 255, 255, 0.1); }
+        .gradient-text { background: linear-gradient(90deg, #38bdf8, #818cf8); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+    </style>
+</head>
+<body class="p-8">
+    <div class="max-w-6xl mx-auto">
+        <!-- Header -->
+        <header class="flex justify-between items-center mb-12">
+            <div>
+                <h1 class="text-4xl font-bold gradient-text mb-2">TaxPilot</h1>
+                <p class="text-slate-400">Autonomous Finance Agent for Bharat</p>
+            </div>
+            <div class="glass p-4 rounded-2xl flex items-center space-x-6">
+                <div class="text-right">
+                    <p class="text-xs text-slate-500 uppercase">System Status</p>
+                    <p class="text-emerald-400 font-semibold">Cloud Database Connected</p>
+                </div>
+                <div class="h-8 w-8 bg-emerald-500/20 rounded-full flex items-center justify-center">
+                    <div class="h-3 w-3 bg-emerald-500 rounded-full animate-pulse"></div>
+                </div>
+            </div>
+        </header>
+
+        <!-- Stats Grid -->
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-12">
+            <div class="glass p-6 rounded-3xl">
+                <p class="text-slate-400 mb-1">Invoices Reconciled</p>
+                <h2 class="text-3xl font-bold" id="total-count">--</h2>
+            </div>
+            <div class="glass p-6 rounded-3xl">
+                <p class="text-slate-400 mb-1">Tax Discrepancies Found</p>
+                <h2 class="text-3xl font-bold text-rose-400" id="flag-count">--</h2>
+            </div>
+            <div class="glass p-6 rounded-3xl">
+                <p class="text-slate-400 mb-1">Total Book Values</p>
+                <h2 class="text-3xl font-bold text-sky-400" id="total-value">₹--</h2>
+            </div>
+        </div>
+
+        <!-- Table -->
+        <div class="glass rounded-3xl overflow-hidden">
+            <div class="p-6 border-b border-white/10 flex justify-between items-center">
+                <h3 class="text-xl font-semibold">Audit Records</h3>
+                <button onclick="fetchData()" class="bg-indigo-600 hover:bg-indigo-500 px-4 py-2 rounded-xl transition-all text-sm">Refresh Data</button>
+            </div>
+            <table class="w-full text-left">
+                <thead class="bg-white/5 text-slate-400 text-sm uppercase">
+                    <tr>
+                        <th class="p-4">Invoice #</th>
+                        <th class="p-4">GSTIN</th>
+                        <th class="p-4">Total Amount</th>
+                        <th class="p-4">Status</th>
+                        <th class="p-4">Flags</th>
+                    </tr>
+                </thead>
+                <tbody id="data-body" class="divide-y divide-white/5">
+                    <!-- Data will be injected here -->
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <script>
+        async function fetchData() {
+            try {
+                // Point to your local server or Render URL
+                const response = await fetch('http://localhost:8000/records');
+                const data = await response.json();
+                
+                const body = document.getElementById('data-body');
+                body.innerHTML = '';
+                
+                let totalAmt = 0;
+                let flags = 0;
+
+                data.forEach(item => {
+                    totalAmt += item.total_amount_claimed;
+                    if(item.status === 'FLAGGED') flags++;
+
+                    const row = `
+                        <tr class="hover:bg-white/5 transition-colors">
+                            <td class="p-4 font-medium">${item.invoice_no}</td>
+                            <td class="p-4 text-slate-400">${item.supplier_gstin}</td>
+                            <td class="p-4 font-semibold text-sky-400">₹${item.total_amount_claimed.toLocaleString()}</td>
+                            <td class="p-4">
+                                <span class="px-3 py-1 rounded-full text-xs font-bold ${item.status === 'PASSED' ? 'bg-emerald-500/10 text-emerald-500' : 'bg-rose-500/10 text-rose-500'}">
+                                    ${item.status}
+                                </span>
+                            </td>
+                            <td class="p-4 text-xs text-rose-300">
+                                ${item.flags.join(', ')}
+                            </td>
+                        </tr>
+                    `;
+                    body.innerHTML += row;
+                });
+
+                document.getElementById('total-count').innerText = data.length;
+                document.getElementById('flag-count').innerText = flags;
+                document.getElementById('total-value').innerText = '₹' + totalAmt.toLocaleString();
+
+            } catch (err) {
+                console.error("Error fetching data:", err);
+                alert("Could not connect to TaxPilot API. Ensure the server is running!");
+            }
+        }
+
+        // Initial fetch
+        fetchData();
+    </script>
+</body>
+</html>
