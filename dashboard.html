@@ -73,8 +73,8 @@
     <script>
         async function fetchData() {
             try {
-                // Point to your local server or Render URL
-                const response = await fetch('http://localhost:8000/records');
+                // Fetching from the relative /records endpoint
+                const response = await fetch('/records');
                 const data = await response.json();
                 
                 const body = document.getElementById('data-body');

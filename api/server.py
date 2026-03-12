@@ -6,6 +6,7 @@ sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
 
 from fastapi import FastAPI, HTTPException, Request, Depends
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import FileResponse
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
 import uvicorn
@@ -33,14 +34,11 @@ vision_agent = VisionAgent()
 def startup_event():
     init_db()
 
-@app.get("/")
+@app.get("/", response_class=FileResponse)
 def read_root():
-    return {
-        "message": "Welcome to TaxPilot: The Autonomous Finance Agent for Bharat",
-        "version": "0.1.0",
-        "status": "Operational",
-        "docs": "/docs"
-    }
+    # Serve the dashboard.html from the root directory
+    dashboard_path = os.path.join(os.path.dirname(__file__), "..", "dashboard.html")
+    return dashboard_path
 
 @app.get("/health")
 def health_check():
@@ -96,15 +94,6 @@ async def whatsapp_webhook(request: Request):
     """
     body = await request.json()
     print(f"Received WhatsApp Webhook: {body}")
-    
-    # Logic: 
-    # 1. Extract image URL from message
-    # 2. image = download_image(url)
-    # 3. text = vision_agent.extract_text(image)
-    # 4. parsed_data = vision_agent.parse_invoice(text)
-    # 5. response_msg = reconciler.process_invoice(parsed_data)
-    # 6. send_whatsapp_reply(response_msg)
-    
     return {"status": "acknowledged"}
 
 if __name__ == "__main__":
