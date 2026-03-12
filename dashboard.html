@@ -17,7 +17,7 @@
         <!-- Header -->
         <header class="flex justify-between items-center mb-12">
             <div>
-                <h1 class="text-4xl font-bold gradient-text mb-2">TaxPilot</h1>
+                <h1 id="portal-title" class="text-4xl font-bold gradient-text mb-2">TaxPilot</h1>
                 <p class="text-slate-400">Autonomous Finance Agent for Bharat</p>
             </div>
             <div class="glass p-4 rounded-2xl flex items-center space-x-6">
@@ -104,10 +104,19 @@
     </div>
 
     <script>
+        // Multi-tenancy: Identify which company is logged in via URL (?org=company_name)
+        const urlParams = new URLSearchParams(window.location.search);
+        const currentOrg = urlParams.get('org') || 'default';
+
+        // Update UI with Company Name
+        if (currentOrg !== 'default') {
+            document.getElementById('portal-title').innerText = currentOrg.toUpperCase() + " | TaxPilot";
+        }
+
         async function fetchData() {
             try {
-                // Fetching from the relative /records endpoint
-                const response = await fetch('/records');
+                // Fetch only THIS company's records
+                const response = await fetch(`/records?org=${currentOrg}`);
                 const data = await response.json();
                 
                 const body = document.getElementById('data-body');
@@ -167,7 +176,8 @@
             formData.append('file', file);
 
             try {
-                const response = await fetch('/upload', {
+                // Save upload for ONLY this company
+                const response = await fetch(`/upload?org=${currentOrg}`, {
                     method: 'POST',
                     body: formData
                 });

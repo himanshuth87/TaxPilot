@@ -51,8 +51,9 @@ def read_portal():
     return dashboard_path
 
 @app.get("/records")
-def get_records(db: Session = Depends(get_db)):
-    return db.query(InvoiceRecord).order_by(InvoiceRecord.id.desc()).all()
+def get_records(org: str = "default", db: Session = Depends(get_db)):
+    """Recall invoices specifically for the requested organization."""
+    return db.query(InvoiceRecord).filter(InvoiceRecord.org_id == org).order_by(InvoiceRecord.id.desc()).all()
 
 @app.get("/export/tally/{record_id}")
 def export_to_tally(record_id: int, db: Session = Depends(get_db)):
@@ -87,7 +88,7 @@ async def upload_statement(file: UploadFile = File(...)):
     }
 
 @app.post("/upload")
-async def upload_invoice(file: UploadFile = File(...), db: Session = Depends(get_db)):
+async def upload_invoice(file: UploadFile = File(...), org: str = "default", db: Session = Depends(get_db)):
     """
     Accepts a PDF or Image, extracts data via OCR, and reconciles it.
     """
@@ -128,8 +129,9 @@ async def upload_invoice(file: UploadFile = File(...), db: Session = Depends(get
         
         result = reconciler.process_invoice(real_data)
         
-        # 4. Save to DB
+        # 4. Save to DB with Org Association
         record = InvoiceRecord(
+            org_id=org,
             invoice_no=real_data['invoice_no'],
             supplier_gstin=real_data['supplier_gstin'],
             base_amount=real_data['base_amount'],

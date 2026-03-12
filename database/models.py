@@ -42,6 +42,7 @@ class InvoiceRecord(Base):
     __tablename__ = "invoices"
 
     id = Column(Integer, primary_key=True, index=True)
+    org_id = Column(String, index=True, default="default") # The Company ID
     invoice_no = Column(String, index=True)
     supplier_gstin = Column(String)
     base_amount = Column(Float)
