@@ -33,6 +33,19 @@ vision_agent = VisionAgent()
 def startup_event():
     init_db()
 
+@app.get("/")
+def read_root():
+    return {
+        "message": "Welcome to TaxPilot: The Autonomous Finance Agent for Bharat",
+        "version": "0.1.0",
+        "status": "Operational",
+        "docs": "/docs"
+    }
+
+@app.get("/health")
+def health_check():
+    return {"status": "healthy", "timestamp": "2026-03-12T17:30:00Z"}
+
 class InvoiceRequest(BaseModel):
     invoice_no: str
     supplier_gstin: str

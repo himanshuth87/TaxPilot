@@ -10,11 +10,12 @@ load_dotenv()
 # Database URL will come from Supabase (Free Tier)
 DATABASE_URL = os.getenv("DATABASE_URL", "sqlite:///./taxpilot_local.db")
 
-# 🛠️ Fix for SQLAlchemy/psycopg2: strip 'pgbouncer' and other query params that cause DSN errors
+# 🛠️ Fix for SQLAlchemy/psycopg2: aggressively strip all query params
+# This solves the 'pgbouncer' connection option error on Render
 if "?" in DATABASE_URL:
     DATABASE_URL = DATABASE_URL.split("?")[0]
 
-# Ensure the URL is in a format SQLAlchemy likes (postgress -> postgresql)
+# Standardize the driver name
 if DATABASE_URL.startswith("postgres://"):
     DATABASE_URL = DATABASE_URL.replace("postgres://", "postgresql://", 1)
 
