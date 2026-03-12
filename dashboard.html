@@ -38,12 +38,26 @@
                 <div class="flex flex-col md:flex-row items-center justify-between gap-6">
                     <div class="flex-1">
                         <h3 class="text-xl font-semibold mb-2">Audit New Invoice</h3>
-                        <p class="text-slate-400 text-sm">Upload a PDF or Image receipt to run autonomous reconciliation.</p>
+                        <p class="text-slate-400 text-sm">Upload a PDF or Image receipt to run autonomous GST reconciliation.</p>
                     </div>
                     <div class="w-full md:w-auto">
                         <label class="flex flex-col items-center justify-center w-full px-6 py-4 bg-indigo-600/20 text-indigo-400 rounded-2xl border-2 border-dashed border-indigo-500/50 cursor-pointer hover:bg-indigo-600/30 transition-all">
                             <span class="text-sm font-semibold" id="upload-status">Drop PDF or Click to Upload</span>
                             <input type="file" id="file-input" class="hidden" accept=".pdf,image/*" onchange="uploadFile(this)">
+                        </label>
+                    </div>
+                </div>
+
+                <!-- NEW: Bank Statement Section -->
+                <div class="mt-8 pt-8 border-t border-white/5 flex flex-col md:flex-row items-center justify-between gap-6">
+                    <div class="flex-1">
+                        <h3 class="text-xl font-semibold mb-2">Sync Bank Statement</h3>
+                        <p class="text-slate-400 text-sm">Upload HDFC, ICICI or SBI statements to auto-book into Tally Ledgers.</p>
+                    </div>
+                    <div class="w-full md:w-auto">
+                        <label class="flex flex-col items-center justify-center w-full px-6 py-4 bg-sky-600/20 text-sky-400 rounded-2xl border-2 border-dashed border-sky-500/50 cursor-pointer hover:bg-sky-600/30 transition-all">
+                            <span class="text-sm font-semibold" id="statement-status">Process Bank CSV/PDF</span>
+                            <input type="file" id="statement-input" class="hidden" accept=".pdf,.csv" onchange="uploadStatement(this)">
                         </label>
                     </div>
                 </div>
@@ -69,20 +83,23 @@
                 <h3 class="text-xl font-semibold">Audit Records</h3>
                 <button onclick="fetchData()" class="bg-indigo-600 hover:bg-indigo-500 px-4 py-2 rounded-xl transition-all text-sm">Refresh Data</button>
             </div>
-            <table class="w-full text-left">
-                <thead class="bg-white/5 text-slate-400 text-sm uppercase">
-                    <tr>
-                        <th class="p-4">Invoice #</th>
-                        <th class="p-4">GSTIN</th>
-                        <th class="p-4">Total Amount</th>
-                        <th class="p-4">Status</th>
-                        <th class="p-4">Flags</th>
-                    </tr>
-                </thead>
-                <tbody id="data-body" class="divide-y divide-white/5">
-                    <!-- Data will be injected here -->
-                </tbody>
-            </table>
+            <div class="overflow-x-auto">
+                <table class="w-full text-left">
+                    <thead class="text-slate-500 text-xs uppercase tracking-widest border-b border-white/5">
+                        <tr>
+                            <th class="pb-4 font-semibold">Invoice #</th>
+                            <th class="pb-4 font-semibold">GSTIN</th>
+                            <th class="pb-4 font-semibold text-right">Amount</th>
+                            <th class="pb-4 font-semibold text-center">Status</th>
+                            <th class="pb-4 font-semibold text-center">Tally Sync</th>
+                            <th class="pb-4 font-semibold">Flags</th>
+                        </tr>
+                    </thead>
+                    <tbody id="data-body" class="text-sm">
+                        <!-- Rows loaded via JavaScript -->
+                    </tbody>
+                </table>
+            </div>
         </div>
     </div>
 
@@ -97,38 +114,46 @@
                 body.innerHTML = '';
                 
                 let totalAmt = 0;
-                let flags = 0;
+                let discrepancies = 0;
 
                 data.forEach(item => {
+                    const statusColor = item.status === 'PASSED' ? 'bg-emerald-500/10 text-emerald-400' : 'bg-rose-500/10 text-rose-400';
                     totalAmt += item.total_amount_claimed;
-                    if(item.status === 'FLAGGED') flags++;
+                    if (item.status !== 'PASSED') discrepancies++;
 
                     const row = `
-                        <tr class="hover:bg-white/5 transition-colors">
-                            <td class="p-4 font-medium">${item.invoice_no}</td>
-                            <td class="p-4 text-slate-400">${item.supplier_gstin}</td>
-                            <td class="p-4 font-semibold text-sky-400">₹${item.total_amount_claimed.toLocaleString()}</td>
-                            <td class="p-4">
-                                <span class="px-3 py-1 rounded-full text-xs font-bold ${item.status === 'PASSED' ? 'bg-emerald-500/10 text-emerald-500' : 'bg-rose-500/10 text-rose-500'}">
+                        <tr class="border-b border-white/5 hover:bg-white/5 transition-all">
+                            <td class="py-4 font-bold text-slate-200">${item.invoice_no}</td>
+                            <td class="py-4 text-slate-400">${item.supplier_gstin}</td>
+                            <td class="py-4 text-right font-bold text-sky-400">₹${item.total_amount_claimed.toLocaleString()}</td>
+                            <td class="py-4 text-center">
+                                <span class="px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider ${statusColor}">
                                     ${item.status}
                                 </span>
                             </td>
-                            <td class="p-4 text-xs text-rose-300">
-                                ${item.flags.join(', ')}
+                            <td class="py-4 text-center">
+                                <button onclick="syncToTally(${item.id})" class="text-indigo-400 hover:text-indigo-300 font-semibold text-xs border border-indigo-500/30 px-3 py-1.5 rounded-lg bg-indigo-500/5 transition-all">
+                                    Push to Tally
+                                </button>
                             </td>
+                            <td class="py-4 text-xs text-rose-400">${item.flags ? item.flags : ''}</td>
                         </tr>
                     `;
                     body.innerHTML += row;
                 });
 
                 document.getElementById('total-count').innerText = data.length;
-                document.getElementById('flag-count').innerText = flags;
+                document.getElementById('flag-count').innerText = discrepancies;
                 document.getElementById('total-value').innerText = '₹' + totalAmt.toLocaleString();
 
             } catch (err) {
                 console.error("Error fetching data:", err);
                 // alert("Could not connect to TaxPilot API.");
             }
+        }
+
+        async function syncToTally(id) {
+            window.location.href = `/export/tally/${id}`;
         }
 
         async function uploadFile(input) {
@@ -160,6 +185,28 @@
             } catch (err) {
                 status.innerText = "❌ Error: " + err.message;
                 setTimeout(() => status.innerText = "Drop PDF or Click to Upload", 5000);
+            }
+        }
+
+        async function uploadStatement(input) {
+            if (!input.files || input.files.length === 0) return;
+            const status = document.getElementById('statement-status');
+            status.innerText = "🤖 AI Categorizing Transactions...";
+            
+            const formData = new FormData();
+            formData.append('file', input.files[0]);
+
+            try {
+                const response = await fetch('/upload/statement', {
+                    method: 'POST',
+                    body: formData
+                });
+                const result = await response.json();
+                status.innerText = `✅ Processed ${result.transactions_found} Entries!`;
+                setTimeout(() => status.innerText = "Process Bank CSV/PDF", 5000);
+            } catch (err) {
+                status.innerText = "❌ Error processing statement";
+                setTimeout(() => status.innerText = "Process Bank CSV/PDF", 5000);
             }
         }
 

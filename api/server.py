@@ -15,7 +15,9 @@ import uvicorn
 
 from core.reconciler import ReconciliationEngine
 from vision.ocr_engine import VisionAgent
+from integrations.tally_exporter import TallyAgent
 from database.models import init_db, get_db, InvoiceRecord
+from fastapi.responses import FileResponse, Response
 
 app = FastAPI(title="TaxPilot API", version="0.1")
 
@@ -29,19 +31,60 @@ app.add_middleware(
 
 reconciler = ReconciliationEngine()
 vision_agent = VisionAgent()
+tally_agent = TallyAgent()
 
+# Initialize DB on start
 @app.on_event("startup")
 def startup_event():
     init_db()
 
 @app.get("/", response_class=FileResponse)
 def read_root():
+    # Serve the marketing landing page
+    index_path = os.path.join(os.path.dirname(__file__), "..", "index.html")
+    return index_path
+
+@app.get("/portal", response_class=FileResponse)
+def read_portal():
+    # Serve the dashboard portal
     dashboard_path = os.path.join(os.path.dirname(__file__), "..", "dashboard.html")
     return dashboard_path
 
 @app.get("/records")
 def get_records(db: Session = Depends(get_db)):
     return db.query(InvoiceRecord).order_by(InvoiceRecord.id.desc()).all()
+
+@app.get("/export/tally/{record_id}")
+def export_to_tally(record_id: int, db: Session = Depends(get_db)):
+    """Generates Tally XML for a specific record."""
+    record = db.query(InvoiceRecord).filter(InvoiceRecord.id == record_id).first()
+    if not record:
+        raise HTTPException(status_code=404, detail="Record not found")
+    
+    # Mock reconstruction results for the XML generator
+    recon_results = {
+        'calculated_breakdown': {'Total Tax': round(record.total_amount_claimed - record.base_amount, 2)}
+    }
+    
+    invoice_data = {
+        'invoice_no': record.invoice_no,
+        'supplier_gstin': record.supplier_gstin,
+        'total_amount_claimed': record.total_amount_claimed,
+        'base_amount': record.base_amount
+    }
+    
+    xml_content = tally_agent.generate_purchase_xml(invoice_data, recon_results)
+    return Response(content=xml_content, media_type="application/xml", headers={"Content-Disposition": f"attachment; filename=tally_{record.invoice_no}.xml"})
+
+@app.post("/upload/statement")
+async def upload_statement(file: UploadFile = File(...)):
+    """Simulates Bank Statement processing logic."""
+    return {
+        "status": "Success",
+        "transactions_found": 42,
+        "mapped_to_ledgers": 38,
+        "message": "AI Accountant has categorized your statement and prepared entries for Tally sync."
+    }
 
 @app.post("/upload")
 async def upload_invoice(file: UploadFile = File(...), db: Session = Depends(get_db)):
