@@ -1,0 +1,29 @@
+# LedgerAgent Core Requirements
+# For the 30-Day MVP
+
+# Data Processing
+pydantic>=2.0.0
+pandas>=2.0.0
+SQLAlchemy>=2.0.0
+psycopg2-binary>=2.9.0
+python-dotenv>=1.0.0
+
+# AI/LLM Layer
+langchain>=0.1.0
+langgraph>=0.0.1
+openai>=1.10.0
+google-generativeai>=0.4.0
+
+# OCR & Image Processing
+pytesseract>=0.3.10
+pdf2image>=1.17.0
+
+# UI & Display
+rich>=13.0.0
+python-dotenv>=1.0.0
+fastapi>=0.100.0
+uvicorn>=0.22.0
+pillow>=10.0.0
+
+# Integration (Mocked)
+requests>=2.31.0
