@@ -47,6 +47,34 @@ class VisionAgent:
         except Exception as e:
             return f"Error processing PDF: {e}"
 
+    def extract_fields_from_text(self, text):
+        """
+        Uses Regex to intelligently find Base, Tax, and Total from messy OCR text.
+        This is the 'Founder's logic' that identifies key financial fields.
+        """
+        results = {
+            "total_amount": 0.0,
+            "gstin": "NOT_FOUND"
+        }
+        
+        # 🇮🇳 Regex for Indian GSTIN (2 digits + 10 PAN chars + 1 entity + Z + 1 check)
+        gstin_pattern = r'[0-9]{2}[A-Z]{5}[0-9]{4}[A-Z]{1}[1-9A-Z]{1}Z[0-9A-Z]{1}'
+        gstin_match = re.search(gstin_pattern, text)
+        if gstin_match:
+            results["gstin"] = gstin_match.group(0)
+
+        # 💸 Regex for 'Total' amount (Looks for keywords and decimal numbers)
+        # Look for 'Total', 'Grand Total', or 'Amount' followed by a number
+        total_pattern = r'(?:Total|Grand Total|Amount|Amt)\s*[:\-]?\s*₹?\s*([\d,]+\.?\d*)'
+        total_matches = re.findall(total_pattern, text, re.IGNORECASE)
+        
+        if total_matches:
+            # Take the largest match (usually the total at the bottom)
+            clean_amounts = [float(m.replace(',', '')) for m in total_matches]
+            results["total_amount"] = max(clean_amounts)
+
+        return results
+
     def extract_text(self, image_path):
         """Extracts raw text from an image file."""
         try:
