@@ -298,6 +298,20 @@
                 return (dueDate - new Date()) < 0;
             });
 
+            if (displayData.length === 0) {
+                body.innerHTML = `
+                    <tr>
+                        <td colspan="5" class="px-10 py-20 text-center">
+                            <div class="flex flex-col items-center opacity-30">
+                                <i data-lucide="inbox" class="w-12 h-12 mb-4"></i>
+                                <p class="text-sm font-bold uppercase tracking-widest">No matching records found in node</p>
+                            </div>
+                        </td>
+                    </tr>
+                `;
+                lucide.createIcons();
+            }
+
             fullData.forEach(item => {
                 totalVal += item.total_amount_claimed;
                 if (item.status !== 'PASSED') totalFlags++;
@@ -369,10 +383,14 @@
             try {
                 const res = await fetch(`/upload?org=${currentOrg}`, { method: 'POST', body: formData });
                 const result = await res.json();
-                status.innerText = "Verified: " + result.audit.status;
+                
+                status.innerText = "Audit Complete: " + result.audit.status;
+                
+                // IMMEDIATE REFRESH - No waiting
+                await fetchData();
+                
                 setTimeout(() => {
                     status.innerText = "Initiate Audit";
-                    fetchData();
                 }, 3000);
             } catch (err) {
                 status.innerText = "Error: Check Node";
@@ -395,7 +413,11 @@
 
         function syncToTally(id) { window.location.href = `/export/tally/${id}`; }
 
+        // Initial Load
         fetchData();
+
+        // Background Sync every 30 seconds to keep dashboard alive
+        setInterval(fetchData, 30000);
     </script>
 </body>
 </html>
