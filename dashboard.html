@@ -261,7 +261,7 @@
 
         const urlParams = new URLSearchParams(window.location.search);
         const currentOrg = urlParams.get('org') || 'default';
-        document.getElementById('org_display').innerText = currentOrg + "@TAX_PILOT_INTEL";
+        try { document.getElementById('org-display').innerText = currentOrg.toUpperCase() + " @ TAXPILOT"; } catch(e) {}
 
         let currentFilter = 'all';
         let fullData = [];
