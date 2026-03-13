@@ -16,7 +16,7 @@ import uvicorn
 from core.reconciler import ReconciliationEngine
 from vision.ocr_engine import VisionAgent
 from integrations.tally_exporter import TallyAgent
-from database.models import init_db, get_db, InvoiceRecord
+from database.models import init_db, get_db, InvoiceRecord, GSTRRecord
 from fastapi.responses import FileResponse, Response
 
 app = FastAPI(title="TaxPilot API", version="0.1")
@@ -77,14 +77,60 @@ def export_to_tally(record_id: int, db: Session = Depends(get_db)):
     xml_content = tally_agent.generate_purchase_xml(invoice_data, recon_results)
     return Response(content=xml_content, media_type="application/xml", headers={"Content-Disposition": f"attachment; filename=tally_{record.invoice_no}.xml"})
 
-@app.post("/upload/statement")
-async def upload_statement(file: UploadFile = File(...)):
-    """Simulates Bank Statement processing logic."""
+@app.post("/upload/gstr")
+async def upload_gstr(file: UploadFile = File(...), org: str = "default", db: Session = Depends(get_db)):
+    """Processes GSTR-2B data from the portal (JSON or CSV)."""
+    # Simple Mock: Assume we are parsing a file that has invoice_no, gstin, and total
+    # In reality, this would use pandas to read the portal excel/csv
+    mock_portal_data = [
+        {"invoice_no": "SCAN-test_1", "gstin": "27ABCDE1234F1Z5", "total": 1180.0, "tax": 180.0},
+        {"invoice_no": "SCAN-test_2", "gstin": "27ABCDE1234F1Z5", "total": 2950.0, "tax": 450.0},
+    ]
+    
+    for item in mock_portal_data:
+        record = GSTRRecord(
+            org_id=org,
+            invoice_no=item["invoice_no"],
+            supplier_gstin=item["gstin"],
+            total_amount=item["total"],
+            tax_amount=item["tax"],
+            status_in_portal="Filed"
+        )
+        db.add(record)
+    
+    db.commit()
+    return {"message": f"Successfully synced {len(mock_portal_data)} records from GST Portal."}
+
+@app.get("/reconcile/gstr")
+def reconcile_portal(org: str = "default", db: Session = Depends(get_db)):
+    """Compares internal invoices vs GSTR Portal data."""
+    internal = db.query(InvoiceRecord).filter(InvoiceRecord.org_id == org).all()
+    portal = db.query(GSTRRecord).filter(GSTRRecord.org_id == org).all()
+    
+    matches = []
+    missing_in_portal = []
+    
+    portal_map = {p.invoice_no: p for p in portal}
+    
+    for inv in internal:
+        if inv.invoice_no in portal_map:
+            p = portal_map[inv.invoice_no]
+            matches.append({
+                "invoice_no": inv.invoice_no,
+                "internal_val": inv.total_amount_claimed,
+                "portal_val": p.total_amount,
+                "status": "Match" if abs(inv.total_amount_claimed - p.total_amount) < 1 else "Mismatch"
+            })
+        else:
+            missing_in_portal.append({
+                "invoice_no": inv.invoice_no,
+                "amount": inv.total_amount_claimed
+            })
+            
     return {
-        "status": "Success",
-        "transactions_found": 42,
-        "mapped_to_ledgers": 38,
-        "message": "AI Accountant has categorized your statement and prepared entries for Tally sync."
+        "summary": {"matched": len(matches), "missing_in_portal": len(missing_in_portal)},
+        "details": matches,
+        "missing": missing_in_portal
     }
 
 @app.post("/upload")
@@ -134,13 +180,20 @@ async def upload_invoice(file: UploadFile = File(...), org: str = "default", db:
         final_date = datetime.datetime.utcnow()
         if fields.get("invoice_date"):
             try:
-                # Basic parser for common formats DD/MM/YYYY or DD-MM-YYYY
-                d_str = fields["invoice_date"].replace('/', '-')
-                parts = d_str.split('-')
-                if len(parts) == 3:
-                    if len(parts[2]) == 2: parts[2] = "20" + parts[2]
-                    final_date = datetime.datetime(int(parts[2]), int(parts[1]), int(parts[0]))
-            except:
+                # Robust date parsing
+                import re
+                d_str = fields["invoice_date"].replace('/', '-').replace('.', '-')
+                parts = re.split(r'[- ]', d_str)
+                if len(parts) >= 3:
+                    # Try to guess format based on year position
+                    p0, p1, p2 = parts[0], parts[1], parts[2]
+                    if len(p0) == 4: # YYYY-MM-DD
+                        final_date = datetime.datetime(int(p0), int(p1), int(p2))
+                    else: # Assume DD-MM-YYYY
+                        if len(p2) == 2: p2 = "20" + p2
+                        final_date = datetime.datetime(int(p2), int(p1), int(p0))
+            except Exception as date_err:
+                print(f"Date Parsing Warning: {date_err}")
                 pass
 
         record = InvoiceRecord(

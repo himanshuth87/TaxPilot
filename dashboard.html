@@ -233,6 +233,37 @@
             }
         }
 
+        async function uploadGSTR(input) {
+            if (!input.files || input.files.length === 0) return;
+            const status = document.getElementById('gstr-status');
+            status.innerText = "⚡ Fetching Portal Data...";
+            
+            const formData = new FormData();
+            formData.append('file', input.files[0]);
+
+            try {
+                const response = await fetch(`/upload/gstr?org=${currentOrg}`, {
+                    method: 'POST',
+                    body: formData
+                });
+                const result = await response.json();
+                status.innerText = "✅ Portal Synced";
+                
+                // Fetch Reconciliation
+                const recoRes = await fetch(`/reconcile/gstr?org=${currentOrg}`);
+                const recoData = await recoRes.json();
+                
+                document.getElementById('reco-summary').classList.remove('hidden');
+                document.getElementById('reco-matches').innerText = recoData.summary.matched;
+                document.getElementById('reco-missing').innerText = recoData.summary.missing_in_portal;
+                
+                setTimeout(() => status.innerText = "Sync Portal Data", 5000);
+            } catch (err) {
+                status.innerText = "❌ Portal Sync Failed";
+                setTimeout(() => status.innerText = "Sync Portal Data", 5000);
+            }
+        }
+        
         // Initial fetch
         fetchData();
     </script>

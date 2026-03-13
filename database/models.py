@@ -55,8 +55,37 @@ class InvoiceRecord(Base):
     is_reconciled = Column(Boolean, default=False)
     processed_at = Column(DateTime, default=datetime.datetime.utcnow)
 
+class GSTRRecord(Base):
+    """
+    Data uploaded from the official GST Portal (Manual or API).
+    Used to cross-reference against internal invoices.
+    """
+    __tablename__ = "gstr_portal_data"
+
+    id = Column(Integer, primary_key=True, index=True)
+    org_id = Column(String, index=True)
+    invoice_no = Column(String, index=True)
+    supplier_gstin = Column(String)
+    total_amount = Column(Float)
+    tax_amount = Column(Float)
+    status_in_portal = Column(String) # e.g. "Filed", "Pending"
+    modified_at = Column(DateTime, default=datetime.datetime.utcnow)
+
 def init_db():
     Base.metadata.create_all(bind=engine)
+    # Simple migration: ensure columns exist (for demo purposes)
+    try:
+        from sqlalchemy import text
+        with engine.connect() as conn:
+            # Check if invoice_date exists, if not add it
+            try:
+                conn.execute(text("ALTER TABLE invoices ADD COLUMN invoice_date DATETIME"))
+                conn.execute(text("ALTER TABLE invoices ADD COLUMN payment_terms INTEGER DEFAULT 30"))
+                conn.commit()
+            except:
+                pass # Already exists
+    except:
+        pass
 
 def get_db():
     db = SessionLocal()
