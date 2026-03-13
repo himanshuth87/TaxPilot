@@ -73,19 +73,23 @@ class GSTRRecord(Base):
 
 def init_db():
     Base.metadata.create_all(bind=engine)
-    # Simple migration: ensure columns exist (for demo purposes)
+    # 🛠️ Migration: Force-add missing columns to existing tables
     try:
         from sqlalchemy import text
-        with engine.connect() as conn:
-            # Check if invoice_date exists, if not add it
-            try:
-                conn.execute(text("ALTER TABLE invoices ADD COLUMN invoice_date DATETIME"))
-                conn.execute(text("ALTER TABLE invoices ADD COLUMN payment_terms INTEGER DEFAULT 30"))
-                conn.commit()
-            except:
-                pass # Already exists
-    except:
-        pass
+        with engine.begin() as conn: # Use begin() for automatic transaction
+            columns_to_add = [
+                ("org_id", "VARCHAR DEFAULT 'default'"),
+                ("invoice_date", "DATETIME"),
+                ("payment_terms", "INTEGER DEFAULT 30"),
+                ("invoice_no", "VARCHAR")
+            ]
+            for col_name, col_type in columns_to_add:
+                try:
+                    conn.execute(text(f"ALTER TABLE invoices ADD COLUMN {col_name} {col_type}"))
+                except:
+                    pass # Column likely already exists
+    except Exception as e:
+        print(f"Migration Note: {e}")
 
 def get_db():
     db = SessionLocal()
