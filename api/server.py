@@ -40,9 +40,9 @@ def startup_event():
 
 @app.get("/", response_class=FileResponse)
 def read_root():
-    # Serve the marketing landing page
-    index_path = os.path.join(os.path.dirname(__file__), "..", "index.html")
-    return index_path
+    # Serve the dashboard portal directly as the root page
+    dashboard_path = os.path.join(os.path.dirname(__file__), "..", "dashboard.html")
+    return dashboard_path
 
 @app.get("/portal", response_class=FileResponse)
 def read_portal():
